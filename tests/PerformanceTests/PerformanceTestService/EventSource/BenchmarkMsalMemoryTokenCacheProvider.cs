@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -27,6 +28,13 @@ namespace PerformanceTestService
         /// <returns>A <see cref="Task"/> that completes when key removal has completed.</returns>
         protected override Task RemoveKeyAsync(string cacheKey)
         {
+            var bytes = base.ReadCacheBytesAsync(cacheKey).GetAwaiter().GetResult();
+
+            if (bytes != null)
+            {
+                MemoryCacheEventSource.Log.DecrementSize(bytes.Length);
+            }
+
             MemoryCacheEventSource.Log.IncrementRemoveCount();
             return base.RemoveKeyAsync(cacheKey);
         }
@@ -38,8 +46,18 @@ namespace PerformanceTestService
         /// <returns>Read Bytes.</returns>
         protected override Task<byte[]> ReadCacheBytesAsync(string cacheKey)
         {
+            var stopwatch = Stopwatch.StartNew();
+            var result = base.ReadCacheBytesAsync(cacheKey);
+            stopwatch.Stop();
+         
             MemoryCacheEventSource.Log.IncrementReadCount();
-            return base.ReadCacheBytesAsync(cacheKey);
+            MemoryCacheEventSource.Log.AddReadDuration(stopwatch.ElapsedMilliseconds);        
+            if (result == null)
+            {
+                MemoryCacheEventSource.Log.IncrementReadMissCount();
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -50,8 +68,18 @@ namespace PerformanceTestService
         /// <returns>A <see cref="Task"/> that completes when a write operation has completed.</returns>
         protected override Task WriteCacheBytesAsync(string cacheKey, byte[] bytes)
         {
+            var stopwatch = Stopwatch.StartNew();
+            var result = base.WriteCacheBytesAsync(cacheKey, bytes);
+            stopwatch.Stop();
+
             MemoryCacheEventSource.Log.IncrementWriteCount();
-            return base.WriteCacheBytesAsync(cacheKey, bytes);
+            MemoryCacheEventSource.Log.AddReadDuration(stopwatch.ElapsedMilliseconds);
+            if (bytes != null)
+            {
+                MemoryCacheEventSource.Log.IncrementSize(bytes.Length);
+            }
+
+            return result;
         }
     }
 }
