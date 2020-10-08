@@ -47,17 +47,17 @@ namespace PerformanceTestService
         protected override Task<byte[]> ReadCacheBytesAsync(string cacheKey)
         {
             var stopwatch = Stopwatch.StartNew();
-            var result = base.ReadCacheBytesAsync(cacheKey);
+            var bytes = base.ReadCacheBytesAsync(cacheKey).GetAwaiter().GetResult();
             stopwatch.Stop();
          
             MemoryCacheEventSource.Log.IncrementReadCount();
             MemoryCacheEventSource.Log.AddReadDuration(stopwatch.ElapsedMilliseconds);        
-            if (result == null)
+            if (bytes == null)
             {
                 MemoryCacheEventSource.Log.IncrementReadMissCount();
             }
 
-            return result;
+            return Task.FromResult(bytes);
         }
 
         /// <summary>
@@ -69,17 +69,17 @@ namespace PerformanceTestService
         protected override Task WriteCacheBytesAsync(string cacheKey, byte[] bytes)
         {
             var stopwatch = Stopwatch.StartNew();
-            var result = base.WriteCacheBytesAsync(cacheKey, bytes);
+            base.WriteCacheBytesAsync(cacheKey, bytes).GetAwaiter().GetResult();
             stopwatch.Stop();
 
             MemoryCacheEventSource.Log.IncrementWriteCount();
-            MemoryCacheEventSource.Log.AddReadDuration(stopwatch.ElapsedMilliseconds);
+            MemoryCacheEventSource.Log.AddWriteDuration(stopwatch.ElapsedMilliseconds);
             if (bytes != null)
             {
                 MemoryCacheEventSource.Log.IncrementSize(bytes.Length);
             }
 
-            return result;
+            return Task.CompletedTask;
         }
     }
 }

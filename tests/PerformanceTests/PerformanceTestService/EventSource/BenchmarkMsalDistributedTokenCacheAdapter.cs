@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
@@ -25,10 +26,17 @@ namespace PerformanceTestService.EventSource
         /// </summary>
         /// <param name="cacheKey">Key of the cache to remove.</param>
         /// <returns>A <see cref="Task"/> that completes when key removal has completed.</returns>
-        protected override async Task RemoveKeyAsync(string cacheKey)
+        protected override Task RemoveKeyAsync(string cacheKey)
         {
+            var bytes = base.ReadCacheBytesAsync(cacheKey).GetAwaiter().GetResult();
+
+            if (bytes != null)
+            {
+                MemoryCacheEventSource.Log.DecrementSize(bytes.Length);
+            }
+
             MemoryCacheEventSource.Log.IncrementRemoveCount();
-            await base.RemoveKeyAsync(cacheKey);
+            return base.RemoveKeyAsync(cacheKey);
         }
 
         /// <summary>
@@ -38,10 +46,20 @@ namespace PerformanceTestService.EventSource
         /// <param name="cacheKey">Key of the cache item to retrieve.</param>
         /// <returns>Read blob representing a token cache for the cache key
         /// (account or app).</returns>
-        protected override async Task<byte[]> ReadCacheBytesAsync(string cacheKey)
+        protected override Task<byte[]> ReadCacheBytesAsync(string cacheKey)
         {
+            var stopwatch = Stopwatch.StartNew();
+            var bytes = base.ReadCacheBytesAsync(cacheKey).GetAwaiter().GetResult();
+            stopwatch.Stop();
+
             MemoryCacheEventSource.Log.IncrementReadCount();
-            return await base.ReadCacheBytesAsync(cacheKey);
+            MemoryCacheEventSource.Log.AddReadDuration(stopwatch.ElapsedMilliseconds);
+            if (bytes == null)
+            {
+                MemoryCacheEventSource.Log.IncrementReadMissCount();
+            }
+
+            return Task.FromResult(bytes);
         }
 
         /// <summary>
@@ -50,10 +68,20 @@ namespace PerformanceTestService.EventSource
         /// <param name="cacheKey">Cache key.</param>
         /// <param name="bytes">blob to write.</param>
         /// <returns>A <see cref="Task"/> that completes when a write operation has completed.</returns>
-        protected override async Task WriteCacheBytesAsync(string cacheKey, byte[] bytes)
+        protected override Task WriteCacheBytesAsync(string cacheKey, byte[] bytes)
         {
+            var stopwatch = Stopwatch.StartNew();
+            base.WriteCacheBytesAsync(cacheKey, bytes).GetAwaiter().GetResult();
+            stopwatch.Stop();
+
             MemoryCacheEventSource.Log.IncrementWriteCount();
-            await base.WriteCacheBytesAsync(cacheKey, bytes);
+            MemoryCacheEventSource.Log.AddWriteDuration(stopwatch.ElapsedMilliseconds);
+            if (bytes != null)
+            {
+                MemoryCacheEventSource.Log.IncrementSize(bytes.Length);
+            }
+
+            return Task.CompletedTask;
         }
     }
 }
