@@ -84,12 +84,12 @@ namespace PerformanceTestService
             Interlocked.Add(ref _cacheSizeInBytes, sizeInBytes * -1);
         }
 
-        public void AddReadDuration(float readDurationInMilliseconds)
+        public void AddReadDuration(double readDurationInMilliseconds)
         {
             _cacheReadDurationCounter.WriteMetric(readDurationInMilliseconds);
         }
 
-        public void AddWriteDuration(float writeDurationInMilliseconds)
+        public void AddWriteDuration(double writeDurationInMilliseconds)
         {
             _cacheWriteDurationCounter.WriteMetric(writeDurationInMilliseconds);
         }

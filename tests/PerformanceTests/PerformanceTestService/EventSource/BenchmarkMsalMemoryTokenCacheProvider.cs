@@ -51,7 +51,7 @@ namespace PerformanceTestService
             stopwatch.Stop();
          
             MemoryCacheEventSource.Log.IncrementReadCount();
-            MemoryCacheEventSource.Log.AddReadDuration(stopwatch.ElapsedMilliseconds);        
+            MemoryCacheEventSource.Log.AddReadDuration(stopwatch.Elapsed.TotalMilliseconds);        
             if (bytes == null)
             {
                 MemoryCacheEventSource.Log.IncrementReadMissCount();
@@ -73,7 +73,7 @@ namespace PerformanceTestService
             stopwatch.Stop();
 
             MemoryCacheEventSource.Log.IncrementWriteCount();
-            MemoryCacheEventSource.Log.AddWriteDuration(stopwatch.ElapsedMilliseconds);
+            MemoryCacheEventSource.Log.AddWriteDuration(stopwatch.Elapsed.TotalMilliseconds);
             if (bytes != null)
             {
                 MemoryCacheEventSource.Log.IncrementSize(bytes.Length);
